@@ -1,0 +1,92 @@
+# Makefile - fly8 for Windows NT 4.0, Visual C++ 4.x
+#
+# Pinned to C:\msdev (VC++ 4.x) rather than the newer VC98/msvc6 install that
+# also sits on PATH on the build box - headers come only from -I (via -X) and
+# libs are searched from msdev's own lib dir first, so nothing leaks in from
+# the newer compiler.
+#
+# GDI video driver only (WinG/DirectDraw SDKs aren't installed on the build
+# box); no UDP net driver. Both are optional extras in the original build -
+# see MSWIN\makenv.top - and can be added back later.
+
+MSDEV	= C:\msdev
+CC	= $(MSDEV)\bin\cl
+LINK	= $(MSDEV)\bin\link
+
+CFLAGS	= -I. -IMSWIN -ICOMMON -X -I$(MSDEV)\include -I$(MSDEV)\mfc\include \
+	  -G5 -W1 -Od -nologo
+LFLAGS	= -nologo -subsystem:windows
+LIBS	= $(MSDEV)\lib\user32.lib $(MSDEV)\lib\gdi32.lib $(MSDEV)\lib\winmm.lib
+
+OBJS = \
+	airdata.obj alarms.obj altitude.obj autop.obj body.obj btrail.obj \
+	cockpit.obj colors.obj command.obj compass.obj debug.obj grmgr.obj \
+	editstr.obj engine.obj field.obj fly8.obj fly8str.obj gear.obj \
+	heading.obj hud.obj hudmenu.obj ifuncs.obj info.obj init.obj \
+	kbdmgr.obj keypad.obj lamps.obj land.obj log.obj loop.obj macros.obj \
+	mat.obj max.obj memory.obj menu.obj menus.obj message.obj nav.obj \
+	need.obj netmgr.obj nogr.obj nokbd.obj nosound.obj nosystem.obj \
+	notimer.obj objects.obj panel.obj pid.obj piper.obj pitch.obj \
+	player.obj ptrmgr.obj prm.obj radar.obj random.obj remote.obj \
+	show.obj sixdof.obj sky.obj sndmgr.obj speed.obj stack.obj \
+	stfont1.obj stfont2.obj stores.obj stroke.obj symbols.obj system.obj \
+	term.obj tunes.obj util.obj views.obj vmodes.obj vv.obj waypoint.obj \
+	window.obj buffers.obj lnd.obj version.obj \
+	obasic.obj object.obj obox.obj obroken.obj ochute.obj oclassic.obj \
+	ocrater.obj ofplane.obj oground.obj ogtarget.obj ohouse.obj olow.obj \
+	om61.obj omk82.obj opaddoc.obj oplane.obj orunway.obj osmoke.obj \
+	otarget.obj otower.obj oviewer.obj oxplane.obj oyplane.obj ogen.obj \
+	ocar.obj \
+	drivers.obj console.obj timer.obj mswin.obj grmswin.obj common.obj \
+	mmsound.obj wave.obj plmidi.obj w32stick.obj \
+	misc.obj stick.obj mouse.obj grstat.obj plsound.obj
+
+all: config.h fly8.exe
+
+config.h: MSWIN\confignv.h
+	copy MSWIN\confignv.h config.h
+
+.c.obj:
+	$(CC) $(CFLAGS) -c $<
+
+drivers.obj: MSWIN\drivers.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\drivers.c
+console.obj: MSWIN\console.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\console.c
+timer.obj: MSWIN\timer.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\timer.c
+mswin.obj: MSWIN\mswin.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\mswin.c
+grmswin.obj: MSWIN\grmswin.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\grmswin.c
+common.obj: MSWIN\common.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\common.c
+mmsound.obj: MSWIN\mmsound.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\mmsound.c
+wave.obj: MSWIN\wave.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\wave.c
+plmidi.obj: MSWIN\plmidi.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\plmidi.c
+w32stick.obj: MSWIN\w32stick.c
+	$(CC) $(CFLAGS) -Fo$@ -c MSWIN\w32stick.c
+
+misc.obj: COMMON\misc.c
+	$(CC) $(CFLAGS) -Fo$@ -c COMMON\misc.c
+stick.obj: COMMON\stick.c
+	$(CC) $(CFLAGS) -Fo$@ -c COMMON\stick.c
+mouse.obj: COMMON\mouse.c
+	$(CC) $(CFLAGS) -Fo$@ -c COMMON\mouse.c
+grstat.obj: COMMON\grstat.c
+	$(CC) $(CFLAGS) -Fo$@ -c COMMON\grstat.c
+plsound.obj: COMMON\plsound.c
+	$(CC) $(CFLAGS) -Fo$@ -c COMMON\plsound.c
+
+fly8.exe: $(OBJS)
+	$(LINK) $(LFLAGS) -out:$@ $(LIBS) @<<
+$(OBJS)
+<<
+
+clean:
+	-del *.obj
+	-del fly8.exe
+	-del config.h

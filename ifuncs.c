@@ -176,7 +176,7 @@ set_lsqrt (void)
 }
 
 extern int FAR
-init_funcs (void)
+funcs_init (void)
 {
 	set_log ();
 	set_trig ();
@@ -185,7 +185,7 @@ init_funcs (void)
 }
 
 extern void FAR
-term_funcs (void)
+funcs_term (void)
 {}
 
 #endif
