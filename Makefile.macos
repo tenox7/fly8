@@ -3,27 +3,47 @@
 # Build from the repo root:  make -f Makefile.macos        (binary -> release/)
 #                            make -f Makefile.macos dist   (+ game data)
 #                            make -f Makefile.macos run
+#                            make -f Makefile.macos dmg    (Fly8.app + Fly8.dmg)
+#                            make -f Makefile.macos release (signed + notarized)
 #
-# Needs SDL2 (brew install sdl2). Objects go to build/macos, the game data
-# is generated in shapes/ and parms/ by cpp+awk. Nothing is copied over the
-# tree, and release/ is shared with Makefile.NT: the mac binary is 'fly8'
-# and it reads 'flymac.ini', so the NT files there are left alone.
+# The plain build needs Homebrew SDL2 (brew install sdl2). Objects go to
+# build/macos, the game data is generated in shapes/ and parms/ by cpp+awk.
+# Nothing is copied over the tree, and release/ is shared with Makefile.NT:
+# the mac binary is 'fly8' and it reads 'flymac.ini', so the NT files there
+# are left alone.
+#
+# The app bundle is a universal binary linked against static SDL2 from vcpkg
+# (cloned into $(VCPKG_ROOT) on first use). 'release' needs DEV_ID and
+# NOTARY_PROFILE, see .env.example.
+
+-include .env
 
 BUILD	= build/macos
 RELDIR	= release
+EXE	= $(RELDIR)/fly8
 
 CC	= cc
 AWK	= $(shell command -v gawk >/dev/null && echo "gawk --traditional" || echo awk)
 SDLCFG	= $(shell command -v sdl2-config || echo /opt/homebrew/bin/sdl2-config)
 
+# ARCH, SDL_CFLAGS and SDL_LIBS are overridden by the universal build.
+ARCH	=
+ifndef SDL_CFLAGS
+SDL_CFLAGS := $(shell $(SDLCFG) --cflags)
+endif
+ifndef SDL_LIBS
+SDL_LIBS := $(shell $(SDLCFG) --libs)
+endif
+
 # fly.h includes "config.h"; ours is pre-included so a stray config.h from
 # another platform's build can't take over.
 CFLAGS	= -O2 -Wall -Wno-implicit-int -Wno-implicit-function-declaration \
 	  -Wno-return-type -Wno-pointer-sign -fomit-frame-pointer \
+	  $(if $(ARCH),-arch $(ARCH)) \
 	  -I. -IUNIX -ICOMMON -I$(BUILD) -include UNIX/configmac.h \
 	  -DSYS_UNIX=1 -DSYS_MACOSX -DCHECK_GR -DHAVE_SDL=1 -DNO_X11 \
-	  -DDEBUG_BGR $(shell $(SDLCFG) --cflags)
-LIBS	= -lm $(shell $(SDLCFG) --libs)
+	  -DDEBUG_BGR $(SDL_CFLAGS)
+LIBS	= $(if $(ARCH),-arch $(ARCH)) -lm $(SDL_LIBS)
 
 CORE	= airdata alarms altitude autop body btrail buffers cockpit colors \
 	  command compass debug editstr engine field fly8 fly8str gear grmgr \
@@ -47,15 +67,16 @@ SHAPES	= runway m61 mk82 gtarget target viewer classic crater house smoke \
 VXX	= $(addprefix shapes/, $(addsuffix .vxx, $(SHAPES)))
 PRM	= parms/classic.prm parms/basic.prm parms/f16.prm
 DATA	= $(VXX) $(PRM) parms/fly.nav parms/fly.lnd
+GAMEDATA = UNIX/flymac.ini UNIX/grsdl.vmd $(DATA) \
+	  misc/*.max misc/*.adv misc/*.b50 misc/*.f22 docs/fly8.doc
 
-EXE	= $(RELDIR)/fly8
 PROGS	= $(EXE) $(RELDIR)/fly8udp $(RELDIR)/udpmgr \
 	  $(RELDIR)/mac2max $(RELDIR)/max2mac
 
 all:	$(PROGS)
 
 $(EXE): $(OBJS)
-	@mkdir -p $(RELDIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(OBJS) -o $@ $(LIBS)
 
 $(RELDIR)/fly8udp: COMMON/fly8udp.c COMMON/fly8udp.h $(BUILD)/need.o
@@ -118,20 +139,120 @@ data:	$(DATA)
 # Stage a binary release into release/, alongside whatever Makefile.NT put
 # there.
 dist:	all data
-	cp UNIX/flymac.ini UNIX/grsdl.vmd $(DATA) $(RELDIR)
+	cp $(GAMEDATA) $(RELDIR)
 	cp shapes/wf16.vxx $(RELDIR)/plane.vxx
-	cp misc/*.max misc/*.adv misc/*.b50 misc/*.f22 $(RELDIR)
-	cp README docs/fly8.doc $(RELDIR)
+	cp README $(RELDIR)
 	cp UNIX/linux.txt $(RELDIR)/readme-unix.txt
 
 run:
 	cd $(RELDIR) && ./fly8
 
+# --- Universal binary with static SDL2 from vcpkg ---
+#
+VCPKG_ROOT ?= $(HOME)/vcpkg
+VCPKG	= $(VCPKG_ROOT)/vcpkg
+ARM64_PREFIX = vcpkg_installed/arm64/arm64-osx
+X64_PREFIX = vcpkg_installed/x64/x64-osx
+UNIVERSAL = $(BUILD)/universal/fly8
+
+# PKG_CONFIG_LIBDIR makes pkg-config look only at vcpkg's output.
+pc	= PKG_CONFIG_LIBDIR=$(1)/lib/pkgconfig PKG_CONFIG_PATH= pkg-config
+
+$(VCPKG_ROOT):
+	git clone https://github.com/microsoft/vcpkg.git $(VCPKG_ROOT)
+
+$(VCPKG): | $(VCPKG_ROOT)
+	$(VCPKG_ROOT)/bootstrap-vcpkg.sh -disableMetrics
+
+$(ARM64_PREFIX)/lib/libSDL2.a: vcpkg.json | $(VCPKG)
+	$(VCPKG) install --triplet=arm64-osx --x-install-root=vcpkg_installed/arm64
+	@touch $@
+
+$(X64_PREFIX)/lib/libSDL2.a: vcpkg.json | $(VCPKG)
+	$(VCPKG) install --triplet=x64-osx --x-install-root=vcpkg_installed/x64
+	@touch $@
+
+define build_arch
+	$(MAKE) -f Makefile.macos $(BUILD)/$(1)/fly8 BUILD=$(BUILD)/$(1) \
+		EXE=$(BUILD)/$(1)/fly8 ARCH=$(1) \
+		SDL_CFLAGS="$(shell $(call pc,$(2)) --cflags sdl2)" \
+		SDL_LIBS="$(shell $(call pc,$(2)) --static --libs sdl2)"
+endef
+
+$(UNIVERSAL): $(ARM64_PREFIX)/lib/libSDL2.a $(X64_PREFIX)/lib/libSDL2.a
+	$(call build_arch,arm64,$(ARM64_PREFIX))
+	$(call build_arch,x86_64,$(X64_PREFIX))
+	@mkdir -p $(dir $@)
+	lipo -create $(BUILD)/arm64/fly8 $(BUILD)/x86_64/fly8 -output $@
+	lipo -info $@
+
+universal: $(UNIVERSAL)
+
+# --- App bundle, disk image, signed release ---
+#
+APP	= $(RELDIR)/Fly8.app
+DMG	= $(RELDIR)/Fly8.dmg
+STAGING	= $(BUILD)/dmg
+
+app:	$(UNIVERSAL) data
+	rm -rf $(APP)
+	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Resources
+	cp MACOS/Info.plist $(APP)/Contents/
+	cp MACOS/Fly8.icns $(APP)/Contents/Resources/
+	cp $(UNIVERSAL) $(APP)/Contents/MacOS/fly8-bin
+	cp MACOS/Fly8.sh $(APP)/Contents/MacOS/Fly8
+	chmod +x $(APP)/Contents/MacOS/Fly8
+	cp $(GAMEDATA) $(APP)/Contents/Resources/
+	cp shapes/wf16.vxx $(APP)/Contents/Resources/plane.vxx
+	codesign --force --sign - $(APP)/Contents/MacOS/fly8-bin
+	codesign --force --sign - $(APP)
+
+define build_dmg
+	rm -rf $(STAGING) $(1)
+	mkdir -p $(STAGING)
+	cp -R $(APP) $(STAGING)/
+	ln -s /Applications $(STAGING)/Applications
+	hdiutil create -volname Fly8 -srcfolder $(STAGING) -ov -format UDZO $(1)
+	rm -rf $(STAGING)
+endef
+
+dmg:	app
+	$(call build_dmg,$(DMG))
+
+release: app
+	@test -n "$(DEV_ID)" || { echo "DEV_ID not set, see .env.example"; exit 1; }
+	@test -n "$(NOTARY_PROFILE)" || { echo "NOTARY_PROFILE not set, see .env.example"; exit 1; }
+	codesign --force --options runtime --timestamp --sign "$(DEV_ID)" \
+		$(APP)/Contents/MacOS/fly8-bin
+	codesign --force --options runtime --timestamp --sign "$(DEV_ID)" $(APP)
+	codesign --verify --strict --verbose=2 $(APP)
+	$(call build_dmg,$(DMG))
+	codesign --force --timestamp --sign "$(DEV_ID)" $(DMG)
+	xcrun notarytool submit $(DMG) --keychain-profile "$(NOTARY_PROFILE)" --wait
+	xcrun stapler staple $(DMG)
+	@echo "Signed + notarized: $(DMG)"
+
+# Regenerate the icon from the X11 one (needs ImageMagick).
+icon:
+	magick UNIX/fly8.xpm -filter point -resize 824x824 -bordercolor none \
+		-border 100 $(BUILD)/icon.png
+	magick -size 1024x1024 xc:none -fill white \
+		-draw "roundrectangle 100,100 923,923 185,185" $(BUILD)/mask.png
+	magick $(BUILD)/icon.png $(BUILD)/mask.png -alpha off \
+		-compose CopyOpacity -composite $(BUILD)/icon.png
+	rm -rf $(BUILD)/Fly8.iconset && mkdir -p $(BUILD)/Fly8.iconset
+	for p in 16:16x16 32:16x16@2x 32:32x32 64:32x32@2x 128:128x128 \
+		256:128x128@2x 256:256x256 512:256x256@2x 512:512x512 \
+		1024:512x512@2x; do \
+		magick $(BUILD)/icon.png -resize $${p%%:*}x$${p%%:*} \
+			$(BUILD)/Fly8.iconset/icon_$${p#*:}.png; done
+	iconutil -c icns $(BUILD)/Fly8.iconset -o MACOS/Fly8.icns
+
 # Only removes what this makefile made; release/ may also hold the NT build.
 clean:
 	rm -rf $(BUILD) $(DATA) shapes/*.i shapes/*.003 parms/*.i
-	rm -f $(PROGS) $(RELDIR)/flymac.ini $(RELDIR)/grsdl.vmd \
+	rm -rf $(PROGS) $(APP) $(DMG) $(RELDIR)/flymac.ini $(RELDIR)/grsdl.vmd \
 		$(RELDIR)/readme-unix.txt
 	-rmdir $(RELDIR) 2>/dev/null; true
 
-.PHONY: all data dist run clean
+.PHONY: all data dist run universal app dmg release icon clean

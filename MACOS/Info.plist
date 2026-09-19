@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Fly8</string>
+    <key>CFBundleDisplayName</key>
+    <string>Fly8</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.github.tenox7.fly8</string>
+    <key>CFBundleVersion</key>
+    <string>1.12</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.12</string>
+    <key>CFBundleExecutable</key>
+    <string>Fly8</string>
+    <key>CFBundleIconFile</key>
+    <string>Fly8</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>

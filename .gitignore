@@ -52,3 +52,5 @@ UNIX/plsound.c
 UNIX/plsound.h
 UNIX/stick.c
 UNIX/stick.h
+vcpkg_installed/
+.env

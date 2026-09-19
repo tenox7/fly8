@@ -1,0 +1,5 @@
+{
+  "name": "fly8",
+  "version-string": "1.12",
+  "dependencies": [ "sdl2" ]
+}
