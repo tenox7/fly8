@@ -1,0 +1,137 @@
+# Makefile.macos - fly8 for macOS with SDL2 (no X11)
+#
+# Build from the repo root:  make -f Makefile.macos        (binary -> release/)
+#                            make -f Makefile.macos dist   (+ game data)
+#                            make -f Makefile.macos run
+#
+# Needs SDL2 (brew install sdl2). Objects go to build/macos, the game data
+# is generated in shapes/ and parms/ by cpp+awk. Nothing is copied over the
+# tree, and release/ is shared with Makefile.NT: the mac binary is 'fly8'
+# and it reads 'flymac.ini', so the NT files there are left alone.
+
+BUILD	= build/macos
+RELDIR	= release
+
+CC	= cc
+AWK	= $(shell command -v gawk >/dev/null && echo "gawk --traditional" || echo awk)
+SDLCFG	= $(shell command -v sdl2-config || echo /opt/homebrew/bin/sdl2-config)
+
+# fly.h includes "config.h"; ours is pre-included so a stray config.h from
+# another platform's build can't take over.
+CFLAGS	= -O2 -Wall -Wno-implicit-int -Wno-implicit-function-declaration \
+	  -Wno-return-type -Wno-pointer-sign -fomit-frame-pointer \
+	  -I. -IUNIX -ICOMMON -I$(BUILD) -include UNIX/configmac.h \
+	  -DSYS_UNIX=1 -DSYS_MACOSX -DCHECK_GR -DHAVE_SDL=1 -DNO_X11 \
+	  -DDEBUG_BGR $(shell $(SDLCFG) --cflags)
+LIBS	= -lm $(shell $(SDLCFG) --libs)
+
+CORE	= airdata alarms altitude autop body btrail buffers cockpit colors \
+	  command compass debug editstr engine field fly8 fly8str gear grmgr \
+	  heading hud hudmenu ifuncs info init kbdmgr keypad lamps land lnd \
+	  log loop macros mat max memory menu menus message nav need netmgr \
+	  nogr nokbd nosound nosystem notimer objects panel pid piper pitch \
+	  player prm ptrmgr radar random remote show sixdof sky sndmgr speed \
+	  stack stfont1 stfont2 stores stroke symbols system term tunes util \
+	  version views vmodes vv waypoint window \
+	  obasic object obox obroken ochute oclassic ocrater ofplane oground \
+	  ogtarget ohouse olow om61 omk82 opaddoc oplane orunway osmoke \
+	  otarget otower oviewer oxplane oyplane ogen ocar
+
+SYS	= drivers console unix sdltimer grsdl plsdl sdlstick fifo \
+	  mouse misc udp bgr grstat plsound
+
+OBJS	= $(addprefix $(BUILD)/, $(addsuffix .o, $(CORE) $(SYS)))
+
+SHAPES	= runway m61 mk82 gtarget target viewer classic crater house smoke \
+	  tower broken box chute wf15 wf16 wf18 car
+VXX	= $(addprefix shapes/, $(addsuffix .vxx, $(SHAPES)))
+PRM	= parms/classic.prm parms/basic.prm parms/f16.prm
+DATA	= $(VXX) $(PRM) parms/fly.nav parms/fly.lnd
+
+EXE	= $(RELDIR)/fly8
+PROGS	= $(EXE) $(RELDIR)/fly8udp $(RELDIR)/udpmgr \
+	  $(RELDIR)/mac2max $(RELDIR)/max2mac
+
+all:	$(PROGS)
+
+$(EXE): $(OBJS)
+	@mkdir -p $(RELDIR)
+	$(CC) $(OBJS) -o $@ $(LIBS)
+
+$(RELDIR)/fly8udp: COMMON/fly8udp.c COMMON/fly8udp.h $(BUILD)/need.o
+	@mkdir -p $(RELDIR)
+	$(CC) $(CFLAGS) COMMON/fly8udp.c $(BUILD)/need.o -o $@
+
+$(RELDIR)/udpmgr: COMMON/udpmgr.c COMMON/fly8udp.h $(BUILD)/need.o
+	@mkdir -p $(RELDIR)
+	$(CC) $(CFLAGS) COMMON/udpmgr.c $(BUILD)/need.o -o $@
+
+$(RELDIR)/mac2max: utils/mac2max.c $(BUILD)/need.o
+	@mkdir -p $(RELDIR)
+	$(CC) $(CFLAGS) utils/mac2max.c $(BUILD)/need.o -o $@
+
+$(RELDIR)/max2mac: utils/max2mac.c $(BUILD)/need.o
+	@mkdir -p $(RELDIR)
+	$(CC) $(CFLAGS) utils/max2mac.c $(BUILD)/need.o -o $@
+
+# The fixed point tables are computed at startup (no EXT_TABS/itabs.c).
+#
+$(BUILD)/buffers.o $(BUILD)/land.o $(BUILD)/mat.o $(BUILD)/show.o \
+$(BUILD)/stroke.o $(BUILD)/symbols.o: CFLAGS += -DINLINE
+$(BUILD)/version.o: $(filter-out $(BUILD)/version.o, $(OBJS))
+
+$(OBJS): fly.h colors.h extern.h UNIX/configmac.h $(BUILD)/config.h
+
+$(BUILD)/config.h:
+	@mkdir -p $(BUILD)
+	echo '/* see UNIX/configmac.h, pre-included by Makefile.macos */' >$@
+
+$(BUILD)/%.o: UNIX/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: COMMON/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Data files: cpp then awk, run inside their directories.
+#
+shapes/%.vxx: shapes/%.vx shapes/f8shape.awk shape.h
+	cd shapes && cp $*.vx $*.c && $(CC) -I.. -E $*.c >$*.i && rm $*.c && \
+		$(AWK) -f f8shape.awk $* && rm -f $*.i $*.003
+
+parms/%.prm: parms/%.prc parms/expr.awk parms.h
+	cd parms && cp $*.prc $*.c && $(CC) -I.. -E $*.c >$*.i && rm $*.c && \
+		$(AWK) -f expr.awk $*.i $*.prm && rm $*.i
+
+parms/%.nav: parms/%.nac parms/expr.awk
+	cd parms && cp $*.nac $*.c && $(CC) -I.. -E $*.c >$*.i && rm $*.c && \
+		$(AWK) -f expr.awk $*.i $*.nav && rm $*.i
+
+parms/%.lnd: parms/%.lnc parms/expr.awk
+	cd parms && cp $*.lnc $*.c && $(CC) -I.. -E $*.c >$*.i && rm $*.c && \
+		$(AWK) -f expr.awk $*.i $*.lnd && rm $*.i
+
+data:	$(DATA)
+
+# Stage a binary release into release/, alongside whatever Makefile.NT put
+# there.
+dist:	all data
+	cp UNIX/flymac.ini UNIX/grsdl.vmd $(DATA) $(RELDIR)
+	cp shapes/wf16.vxx $(RELDIR)/plane.vxx
+	cp misc/*.max misc/*.adv misc/*.b50 misc/*.f22 $(RELDIR)
+	cp README docs/fly8.doc $(RELDIR)
+	cp UNIX/linux.txt $(RELDIR)/readme-unix.txt
+
+run:
+	cd $(RELDIR) && ./fly8
+
+# Only removes what this makefile made; release/ may also hold the NT build.
+clean:
+	rm -rf $(BUILD) $(DATA) shapes/*.i shapes/*.003 parms/*.i
+	rm -f $(PROGS) $(RELDIR)/flymac.ini $(RELDIR)/grsdl.vmd \
+		$(RELDIR)/readme-unix.txt
+	-rmdir $(RELDIR) 2>/dev/null; true
+
+.PHONY: all data dist run clean

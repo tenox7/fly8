@@ -4,11 +4,12 @@
  * Author: Eyal Lebedinsky (eyal@eyal.emu.id.au).
 */
 
-/* Console keyboard handler: X11 (most code actualy in grX.c).
+/* Console keyboard and mouse handler: the graphics driver owns the events.
 */
 
 #include "fly.h"
 #include "grx.h"
+#include "mouse.h"
 
 
 static int FAR
@@ -62,3 +63,13 @@ struct KbdDriver KbdConsole = {
 	kwait
 };
 
+
+extern int
+GetMouse (int *win_x, int *win_y, char *btn, int *nbtn)
+{
+	if (Gr && Gr->extra)
+		return (((struct GrxExtra *)(Gr->extra))->GetMouse
+					(win_x, win_y, btn, nbtn));
+	else
+		return (-1);
+}

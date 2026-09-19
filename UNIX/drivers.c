@@ -4,7 +4,7 @@
  * Author: Eyal Lebedinsky (eyal@eyal.emu.id.au).
 */
 
-/* User defined lists of drivers. This one is for UNIX/X11.
+/* User defined lists of drivers. This one is for UNIX/X11 and SDL2.
  *
  * Associated with the player we have one of each:
  *  Graphics Driver (output)
@@ -17,26 +17,42 @@
 #include "fly.h"
 
 
+#if HAVE_SDL
+extern struct GrDriver GrSDL;
+#endif
+#ifndef NO_X11
 extern struct GrDriver GrX;
 extern struct GrDriver GrI;
+#endif
 #if HAVE_SVGALIB
 extern struct GrDriver GrSVGA;
 #endif
 
 struct GrDriver *GrDrivers[] = {
+#if HAVE_SDL
+	&GrSDL,		/* default when available */
+#endif
+#ifndef NO_X11
 	&GrX,		/* default */
 	&GrI,
+#endif
 #if HAVE_SVGALIB
 	&GrSVGA,
 #endif
 0};
 
 
+#if HAVE_SDL
+extern struct SndDriver SndPlSDL;
+#endif
 #if HAVE_MIDI
 extern struct SndDriver SndPlMidi;
 #endif
 
 struct SndDriver *SndDrivers[] = {
+#if HAVE_SDL
+	&SndPlSDL,
+#endif
 #if HAVE_MIDI
 	&SndPlMidi,
 #endif
@@ -49,6 +65,9 @@ extern struct PtrDriver PtrMouse;
 extern struct PtrDriver PtrAstick;
 extern struct PtrDriver PtrBstick;
 #endif
+#if HAVE_SDL
+extern struct PtrDriver PtrSdlStick;
+#endif
 extern struct PtrDriver PtrRandom;
 
 struct PtrDriver *PtrDrivers[] = {
@@ -57,6 +76,9 @@ struct PtrDriver *PtrDrivers[] = {
 #if HAVE_JOYSTICK
 	&PtrAstick,
 	&PtrBstick,
+#endif
+#if HAVE_SDL
+	&PtrSdlStick,
 #endif
 	&PtrRandom,
 0};

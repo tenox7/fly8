@@ -23,6 +23,7 @@ How to install the sources from a xxxx.zip file:
 4) UNIX/config lx	(for Linux)
    UNIX/config sp	(for SUN SparcStation)
    UNIX/config ix	(for SGI Irix)
+   For macOS use "make -f Makefile.macos dist" (needs SDL2: brew install sdl2).
 
    Will set everything up. For other systems you will need to update all
    the *lx* files into new *zz* files for your platform. However, except

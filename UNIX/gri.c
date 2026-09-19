@@ -297,7 +297,7 @@ GriInit (DEVICE *dev, char *options)
 #if HAVE_XPM
 		TheIcon,
 #else
-		NULL,
+		(Pixmap)0,
 #endif
 		NULL, 0, NULL);
 	TheGC = DefaultGC (TheDisplay, TheScreen);

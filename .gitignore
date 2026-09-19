@@ -20,3 +20,35 @@ parms/*.lnd
 /release/
 /fly8.res
 /fly.mac
+# unix/macos builds
+/Makefile
+/fly8
+/fly8.map
+/ifuncsm
+/itabs.c
+*.o
+*.a
+*.log
+build/
+UNIX/fly8udp
+UNIX/udpmgr
+utils/mac2max
+utils/max2mac
+# copied from COMMON by UNIX/config
+UNIX/bgr.c
+UNIX/bgr.h
+UNIX/bgrasm.x
+UNIX/grstat.c
+UNIX/misc.c
+UNIX/mouse.c
+UNIX/mouse.h
+UNIX/vgr.c
+UNIX/vgr.h
+UNIX/fly8udp.c
+UNIX/fly8udp.h
+UNIX/udp.c
+UNIX/udpmgr.c
+UNIX/plsound.c
+UNIX/plsound.h
+UNIX/stick.c
+UNIX/stick.h

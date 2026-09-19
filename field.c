@@ -66,8 +66,10 @@ field_read (FILE *ifile, struct FldTab FAR *fld, char * line)
 		return (-1);
 	}
 
-	if (READ_I+4 == fld->type)
+	if (READ_I+sizeof (long) == fld->type)
 		*(long *)(fld->p) = t;
+	else if (READ_I+sizeof (int) == fld->type)
+		*(int *)(fld->p) = (int)t;
 	else if (READ_I+2 == fld->type)
 		*(short *)(fld->p) = (short)t;
 	else if (READ_I+1 == fld->type)

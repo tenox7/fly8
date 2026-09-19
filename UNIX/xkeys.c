@@ -15,7 +15,6 @@
 
 #include "grx.h"
 #include "xkeys.h"
-#include "mouse.h"
 
 
 LOCAL_FUNC int
@@ -101,14 +100,4 @@ xGetKey (XKeyEvent *xkey)
 	} else
 		c = xGetSpecial (xkey, keysym);
 	return (c);
-}
-
-extern int
-GetMouse (int *win_x, int *win_y, char *btn, int *nbtn)
-{
-	if (Gr && Gr->extra)
-		return (((struct GrxExtra *)(Gr->extra))->GetMouse 
-					(win_x, win_y, btn, nbtn));
-	else
-		return (-1);
 }
