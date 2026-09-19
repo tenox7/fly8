@@ -1,4 +1,6 @@
-# Makefile - fly8 for Windows NT 4.0, Visual C++ 4.x
+# Makefile.NT - fly8 for Windows NT 4.0, Visual C++ 4.x
+#
+# Build from the repo root:  nmake -f Makefile.NT
 #
 # Pinned to C:\msdev (VC++ 4.x) rather than the newer VC98/msvc6 install that
 # also sits on PATH on the build box - headers come only from -I (via -X) and
