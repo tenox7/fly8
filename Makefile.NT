@@ -1,6 +1,7 @@
 # Makefile.NT - fly8 for Windows NT 4.0, Visual C++ 4.x
 #
-# Build from the repo root:  nmake -f Makefile.NT
+# Build from the repo root:  nmake -f Makefile.NT        (exe -> release\)
+#                            nmake -f Makefile.NT dist   (+ game data)
 #
 # Pinned to C:\msdev (VC++ 4.x) rather than the newer VC98/msvc6 install that
 # also sits on PATH on the build box - headers come only from -I (via -X) and
@@ -44,7 +45,9 @@ OBJS = \
 	mmsound.obj wave.obj plmidi.obj w32stick.obj \
 	misc.obj stick.obj mouse.obj grstat.obj plsound.obj
 
-all: config.h fly8.exe
+EXE	= $(RELDIR)\fly8.exe
+
+all: config.h $(EXE)
 
 config.h: MSWIN\confignv.h
 	copy MSWIN\confignv.h config.h
@@ -84,23 +87,21 @@ grstat.obj: COMMON\grstat.c
 plsound.obj: COMMON\plsound.c
 	$(CC) $(CFLAGS) -Fo$@ -c COMMON\plsound.c
 
-fly8.exe: $(OBJS)
+$(EXE): $(OBJS)
+	-md $(RELDIR)
 	$(LINK) $(LFLAGS) -out:$@ $(LIBS) @<<
 $(OBJS)
 <<
 
 clean:
 	-del *.obj
-	-del fly8.exe
 	-del config.h
 	-rd /s /q $(RELDIR)
 
 # Stage a binary release into release\. The .vxx/.prm/.nav/.lnd data files
 # are generated from shapes\ and parms\ by cpp+awk - build them there first
 # (see README), they are not in git.
-dist: fly8.exe
-	-md $(RELDIR)
-	copy fly8.exe			$(RELDIR)
+dist: $(EXE)
 	copy MSWIN\fly.ini.nt		$(RELDIR)\fly.ini
 	copy MSWIN\grmswin.vmd		$(RELDIR)
 	copy MSWIN\fly8.ico		$(RELDIR)
