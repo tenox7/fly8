@@ -19,6 +19,7 @@ CFLAGS	= -I. -IMSWIN -ICOMMON -X -I$(MSDEV)\include -I$(MSDEV)\mfc\include \
 	  -G5 -W1 -Od -nologo
 LFLAGS	= -nologo -subsystem:windows
 LIBS	= $(MSDEV)\lib\user32.lib $(MSDEV)\lib\gdi32.lib $(MSDEV)\lib\winmm.lib
+RELDIR	= release
 
 OBJS = \
 	airdata.obj alarms.obj altitude.obj autop.obj body.obj btrail.obj \
@@ -92,3 +93,22 @@ clean:
 	-del *.obj
 	-del fly8.exe
 	-del config.h
+	-rd /s /q $(RELDIR)
+
+# Stage a binary release into release\. The .vxx/.prm/.nav/.lnd data files
+# are generated from shapes\ and parms\ by cpp+awk - build them there first
+# (see README), they are not in git.
+dist: fly8.exe
+	-md $(RELDIR)
+	copy fly8.exe			$(RELDIR)
+	copy MSWIN\fly.ini.nt		$(RELDIR)\fly.ini
+	copy MSWIN\grmswin.vmd		$(RELDIR)
+	copy MSWIN\fly8.ico		$(RELDIR)
+	copy shapes\*.vxx		$(RELDIR)
+	copy shapes\wf16.vxx		$(RELDIR)\plane.vxx
+	copy parms\*.prm		$(RELDIR)
+	copy parms\fly.nav		$(RELDIR)
+	copy parms\fly.lnd		$(RELDIR)
+	copy README			$(RELDIR)
+	copy MSWIN\readme.txt		$(RELDIR)
+	copy docs\fly8.doc		$(RELDIR)
