@@ -179,7 +179,7 @@ WinInit ( HANDLE hInstance, LPSTR  lpszAppName, LPSTR  lpszMessage)
 
 	pFly8Class.style	 = CS_OWNDC | CS_BYTEALIGNWINDOW;
 	pFly8Class.hCursor	 = LoadCursor ((HINSTANCE)NULL, IDC_ICON);
-	pFly8Class.hIcon	 = (HICON)NULL;
+	pFly8Class.hIcon	 = LoadIcon (hInstance, MAKEINTRESOURCE (1));
 	pFly8Class.lpszMenuName	 = (LPSTR)NULL;
 	                
 	pFly8Class.hInstance	 = hInstance;

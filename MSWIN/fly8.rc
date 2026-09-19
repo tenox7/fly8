@@ -1,0 +1,5 @@
+/* fly8.rc - application icon for the NT build (see Makefile.NT) */
+
+#define IDI_FLY8	1
+
+IDI_FLY8	ICON	"fly8.ico"

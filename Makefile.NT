@@ -15,6 +15,7 @@
 MSDEV	= C:\msdev
 CC	= $(MSDEV)\bin\cl
 LINK	= $(MSDEV)\bin\link
+RC	= $(MSDEV)\bin\rc
 
 CFLAGS	= -I. -IMSWIN -ICOMMON -X -I$(MSDEV)\include -I$(MSDEV)\mfc\include \
 	  -G5 -W1 -Od -nologo
@@ -46,6 +47,7 @@ OBJS = \
 	misc.obj stick.obj mouse.obj grstat.obj plsound.obj
 
 EXE	= $(RELDIR)\fly8.exe
+RES	= fly8.res
 
 all: config.h $(EXE)
 
@@ -87,14 +89,18 @@ grstat.obj: COMMON\grstat.c
 plsound.obj: COMMON\plsound.c
 	$(CC) $(CFLAGS) -Fo$@ -c COMMON\plsound.c
 
-$(EXE): $(OBJS)
+$(RES): MSWIN\fly8.rc MSWIN\fly8.ico
+	$(RC) -i MSWIN -fo $@ MSWIN\fly8.rc
+
+$(EXE): $(OBJS) $(RES)
 	-md $(RELDIR)
-	$(LINK) $(LFLAGS) -out:$@ $(LIBS) @<<
+	$(LINK) $(LFLAGS) -out:$@ $(LIBS) $(RES) @<<
 $(OBJS)
 <<
 
 clean:
 	-del *.obj
+	-del $(RES)
 	-del config.h
 	-rd /s /q $(RELDIR)
 
