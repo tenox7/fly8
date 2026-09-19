@@ -18,3 +18,5 @@ parms/*.prm
 parms/*.nav
 parms/*.lnd
 /release/
+/fly8.res
+/fly.mac
